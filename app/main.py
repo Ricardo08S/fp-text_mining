@@ -20,7 +20,8 @@ app.mount("/static", StaticFiles(directory=settings.app_root / "app" / "static")
 
 @lru_cache
 def get_repository() -> TopicRepository:
-    return TopicRepository(get_settings().xai_csv_path)
+    settings = get_settings()
+    return TopicRepository(settings.detailed_csv_path, settings.judged_csv_path)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -54,12 +55,12 @@ def index() -> str:
           <strong id="docCount">-</strong>
         </div>
         <div class="metric">
-          <span class="metric-label">Gemini Cohesion</span>
-          <strong id="geminiAvg">-</strong>
+          <span class="metric-label">Top Winner</span>
+          <strong id="topWinner">-</strong>
         </div>
         <div class="metric">
-          <span class="metric-label">Qwen Cohesion</span>
-          <strong id="qwenAvg">-</strong>
+          <span class="metric-label">Best Avg Judge</span>
+          <strong id="bestJudgeAvg">-</strong>
         </div>
       </section>
 
@@ -68,14 +69,15 @@ def index() -> str:
           <label for="searchInput">Search</label>
           <input id="searchInput" type="search" placeholder="topic, keyword, label" />
 
-          <label for="cohesionInput">Minimum cohesion</label>
-          <input id="cohesionInput" type="number" min="0" max="10" step="0.5" placeholder="0-10" />
+          <label for="scoreInput">Minimum judge score</label>
+          <input id="scoreInput" type="number" min="0" max="16" step="0.5" placeholder="0-16" />
 
-          <label for="modelSelect">Cohesion model</label>
+          <label for="modelSelect">Judge model</label>
           <select id="modelSelect">
-            <option value="gemini">Gemini</option>
-            <option value="qwen">Qwen</option>
-            <option value="best">Best available</option>
+            <option value="winner">Winner</option>
+            <option value="Gemma-4-31B">Gemma-4-31B</option>
+            <option value="Qwen-3-32B">Qwen-3-32B</option>
+            <option value="Llama-3.3-70B">Llama-3.3-70B</option>
           </select>
 
           <button id="resetButton" type="button">Reset</button>
@@ -93,8 +95,8 @@ def index() -> str:
                   <th>ID</th>
                   <th>Label</th>
                   <th>Keywords</th>
-                  <th>Docs</th>
-                  <th>Cohesion</th>
+                  <th>Winner</th>
+                  <th>Judge</th>
                 </tr>
               </thead>
               <tbody id="topicRows"></tbody>
@@ -108,7 +110,7 @@ def index() -> str:
             <span id="detailMeta">-</span>
           </div>
           <div id="detailContent" class="empty-state">
-            Choose a row from the topic table to inspect label reasoning, themes, and cohesion notes.
+            Choose a row from the topic table to inspect winner reasoning, judge scores, and model explanations.
           </div>
         </section>
       </section>
@@ -123,8 +125,9 @@ def index() -> str:
 @app.get("/health")
 def health(settings: Settings = Depends(get_settings)) -> dict:
     return {
-        "ok": settings.xai_csv_path.exists(),
-        "source_file": str(settings.xai_csv_path),
+        "ok": settings.detailed_csv_path.exists() and settings.judged_csv_path.exists(),
+        "detailed_source_file": str(settings.detailed_csv_path),
+        "judged_source_file": str(settings.judged_csv_path),
     }
 
 
@@ -136,13 +139,13 @@ def summary(repository: TopicRepository = Depends(get_repository)) -> dict:
 @app.get("/api/topics")
 def topics(
     q: str | None = Query(default=None),
-    min_cohesion: float | None = Query(default=None, ge=0, le=10),
-    model: str = Query(default="gemini", pattern="^(gemini|qwen|best)$"),
+    min_score: float | None = Query(default=None, ge=0, le=16),
+    model: str = Query(default="winner"),
     repository: TopicRepository = Depends(get_repository),
 ) -> list[dict]:
     return [
         topic.to_summary()
-        for topic in repository.search(q=q, min_cohesion=min_cohesion, model=model)
+        for topic in repository.search(q=q, min_score=min_score, model=model)
     ]
 
 

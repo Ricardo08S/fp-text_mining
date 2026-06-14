@@ -7,10 +7,10 @@ const els = {
   sourceStatus: document.getElementById("sourceStatus"),
   topicCount: document.getElementById("topicCount"),
   docCount: document.getElementById("docCount"),
-  geminiAvg: document.getElementById("geminiAvg"),
-  qwenAvg: document.getElementById("qwenAvg"),
+  topWinner: document.getElementById("topWinner"),
+  bestJudgeAvg: document.getElementById("bestJudgeAvg"),
   searchInput: document.getElementById("searchInput"),
-  cohesionInput: document.getElementById("cohesionInput"),
+  scoreInput: document.getElementById("scoreInput"),
   modelSelect: document.getElementById("modelSelect"),
   resetButton: document.getElementById("resetButton"),
   resultCount: document.getElementById("resultCount"),
@@ -26,6 +26,13 @@ function formatNumber(value) {
 
 function formatScore(value) {
   return value === null || value === undefined ? "-" : Number(value).toFixed(1);
+}
+
+function formatCompactModel(value) {
+  return String(value ?? "-")
+    .replace("-4-31B", "")
+    .replace("-3-32B", "")
+    .replace("-3.3-70B", "");
 }
 
 function escapeHtml(value) {
@@ -55,17 +62,27 @@ async function loadSummary() {
   els.sourceStatus.classList.toggle("error", !health.ok);
   els.topicCount.textContent = summary.topic_count;
   els.docCount.textContent = formatNumber(summary.total_documents);
-  els.geminiAvg.textContent = formatScore(summary.gemini_avg_cohesion);
-  els.qwenAvg.textContent = formatScore(summary.qwen_avg_cohesion);
+
+  const winnerEntries = Object.entries(summary.winner_distribution ?? {})
+    .sort((a, b) => b[1] - a[1]);
+  const bestModel = Object.entries(summary.model_stats ?? {})
+    .sort((a, b) => (b[1].avg_judge_total ?? -1) - (a[1].avg_judge_total ?? -1))[0];
+
+  els.topWinner.textContent = winnerEntries.length
+    ? `${formatCompactModel(winnerEntries[0][0])} (${winnerEntries[0][1]})`
+    : "-";
+  els.bestJudgeAvg.textContent = bestModel
+    ? `${formatCompactModel(bestModel[0])} ${formatScore(bestModel[1].avg_judge_total)}`
+    : "-";
 }
 
 function currentQueryUrl() {
   const params = new URLSearchParams();
   const q = els.searchInput.value.trim();
-  const minCohesion = els.cohesionInput.value.trim();
+  const minScore = els.scoreInput.value.trim();
 
   if (q) params.set("q", q);
-  if (minCohesion) params.set("min_cohesion", minCohesion);
+  if (minScore) params.set("min_score", minScore);
   params.set("model", els.modelSelect.value);
 
   return `/api/topics?${params.toString()}`;
@@ -91,10 +108,10 @@ function renderTopics() {
     return `
       <tr class="${selectedClass}" data-topic-id="${topic.topic_id}" tabindex="0">
         <td>${topic.topic_id}</td>
-        <td><strong>${escapeHtml(topic.label)}</strong></td>
+        <td><strong>${escapeHtml(topic.label)}</strong><br><small>${formatNumber(topic.doc_count)} docs</small></td>
         <td>${escapeHtml(keywords)}</td>
-        <td>${formatNumber(topic.doc_count)}</td>
-        <td>${formatScore(topic.best_cohesion)}</td>
+        <td>${escapeHtml(formatCompactModel(topic.winner_model))}</td>
+        <td>${formatScore(topic.judge_total)}</td>
       </tr>
     `;
   }).join("");
@@ -116,7 +133,7 @@ async function selectTopic(topicId) {
 
   const detail = await getJson(`/api/topics/${topicId}`);
   els.detailTitle.textContent = detail.label;
-  els.detailMeta.textContent = `Topic ${detail.topic_id} · ${formatNumber(detail.doc_count)} docs`;
+  els.detailMeta.textContent = `Topic ${detail.topic_id} | ${formatNumber(detail.doc_count)} docs | Winner ${formatCompactModel(detail.winner_model)}`;
 
   els.detailContent.className = "detail-content";
   els.detailContent.innerHTML = `
@@ -124,21 +141,32 @@ async function selectTopic(topicId) {
       ${detail.top_keywords.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
     </div>
 
+    <section class="judge-summary">
+      <h3>Judge reasoning</h3>
+      <p>${escapeHtml(detail.judgment_reasoning || "-")}</p>
+    </section>
+
     <div class="comparison">
-      ${renderModelBlock("Gemini", detail.gemini)}
-      ${renderModelBlock("Qwen", detail.qwen)}
+      ${detail.models.map((model) => renderModelBlock(model, model.model === detail.winner_model)).join("")}
     </div>
   `;
 }
 
-function renderModelBlock(title, model) {
+function renderModelBlock(model, isWinner) {
   return `
-    <article class="model-block">
+    <article class="model-block ${isWinner ? "winner-block" : ""}">
       <div class="model-heading">
-        <h3>${escapeHtml(title)}</h3>
-        <span>Cohesion ${formatScore(model.cohesion)}</span>
+        <h3>${escapeHtml(model.model)}${isWinner ? " - Winner" : ""}</h3>
+        <span>Judge ${formatScore(model.judge.total)}/16</span>
       </div>
       <h4>${escapeHtml(model.label)}</h4>
+      <div class="score-grid">
+        <span>Faith ${formatScore(model.judge.faithfulness)}</span>
+        <span>Spec ${formatScore(model.judge.specificity)}</span>
+        <span>Interp ${formatScore(model.judge.interpretability)}</span>
+        <span>Utility ${formatScore(model.judge.linguistic_utility)}</span>
+        <span>Cohesion ${formatScore(model.cohesion)}</span>
+      </div>
       <p>${escapeHtml(model.explanation)}</p>
       <h5>Themes</h5>
       <ul>
@@ -148,6 +176,8 @@ function renderModelBlock(title, model) {
       <p>${escapeHtml(model.reasoning)}</p>
       <h5>Cohesion reasoning</h5>
       <p>${escapeHtml(model.cohesion_reasoning)}</p>
+      <h5>Judge justification</h5>
+      <p>${escapeHtml(model.judge.justification)}</p>
     </article>
   `;
 }
@@ -171,12 +201,12 @@ function debounce(fn, delay = 250) {
 const debouncedLoadTopics = debounce(loadTopics);
 
 els.searchInput.addEventListener("input", debouncedLoadTopics);
-els.cohesionInput.addEventListener("input", debouncedLoadTopics);
+els.scoreInput.addEventListener("input", debouncedLoadTopics);
 els.modelSelect.addEventListener("change", loadTopics);
 els.resetButton.addEventListener("click", () => {
   els.searchInput.value = "";
-  els.cohesionInput.value = "";
-  els.modelSelect.value = "gemini";
+  els.scoreInput.value = "";
+  els.modelSelect.value = "winner";
   loadTopics();
 });
 

@@ -301,6 +301,28 @@ td {
   padding-top: 14px;
 }
 
+.winner-block {
+  border-top: 3px solid var(--accent);
+  background: #f6fffb;
+  margin: 0 -8px;
+  padding: 14px 8px 0;
+  border-radius: 6px;
+}
+
+.judge-summary {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+  margin-bottom: 14px;
+}
+
+.judge-summary p {
+  margin-bottom: 0;
+  color: #314144;
+  font-size: 13px;
+}
+
 .model-heading {
   display: flex;
   align-items: center;
@@ -324,6 +346,25 @@ td {
 .model-block li {
   color: #314144;
   font-size: 13px;
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.score-grid span {
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .model-block ul {
@@ -357,6 +398,10 @@ td {
   .summary-band,
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .table-wrap {

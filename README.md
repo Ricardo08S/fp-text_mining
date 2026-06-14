@@ -1,6 +1,6 @@
 # PubMed Topic XAI App
 
-Aplikasi sederhana untuk mengeksplorasi hasil akhir skenario 3. Versi awal ini bersifat read-only: aplikasi membaca CSV XAI final, menampilkan daftar 25 topik, pencarian, filter cohesion, ringkasan metrik, dan detail per topik.
+Aplikasi sederhana untuk mengeksplorasi hasil akhir skenario 3. Versi awal ini bersifat read-only: aplikasi membaca CSV XAI final, menampilkan daftar 25 topik, pencarian, filter skor LLM-as-judge, ringkasan metrik, dan detail per topik.
 
 ## Stack
 
@@ -55,31 +55,47 @@ Folder `artifacts/` sengaja masuk `.gitignore` karena berisi output eksperimen, 
 Untuk versi aplikasi saat ini, siapkan file berikut:
 
 ```text
-artifacts/s3_xai_detailed_comparison_hdbscan_25.csv
+artifacts/s3_xai_detailed_comparison_hdbscan_25_llm_as_judge.csv
+artifacts/s3_xai_judged_results_hdbscan_25.csv
 ```
 
-File tersebut adalah hasil akhir skenario 3 dan menjadi sumber data dashboard.
+File tersebut adalah hasil akhir skenario 3 terbaru: detailed output dari tiga model kandidat dan hasil LLM-as-judge.
 
 Untuk tahap berikutnya, folder ini bisa berisi:
 
-- `s3_xai_detailed_comparison_hdbscan_25.csv` - wajib untuk dashboard Opsi A.
+- `s3_xai_detailed_comparison_hdbscan_25_llm_as_judge.csv` - wajib untuk dashboard Opsi A terbaru.
+- `s3_xai_judged_results_hdbscan_25.csv` - wajib untuk winner model dan skor LLM-as-judge.
 - `scenario2_winner_for_scenario3.csv` - metadata winner skenario 2, opsional untuk ditampilkan.
 - `scenario2_best_model.pkl` - model BERTopic final, nanti dibutuhkan jika aplikasi mulai menerima input teks baru.
 - `cache/` - cache hasil parsing, API, atau regenerate XAI jika fitur LLM ditambahkan.
 
-Jika ingin memakai CSV dari lokasi lain tanpa menyalin ke `artifacts/`:
+Jika ingin memakai CSV dari lokasi lain tanpa menyalin ke `artifacts/`, gunakan:
 
 ```bash
-set XAI_CSV_PATH=D:\path\to\s3_xai_detailed_comparison_hdbscan_25.csv
-uvicorn app.main:app --reload
+set XAI_DETAILED_CSV_PATH=D:\path\to\s3_xai_detailed_comparison_hdbscan_25_llm_as_judge.csv
+set XAI_JUDGED_CSV_PATH=D:\path\to\s3_xai_judged_results_hdbscan_25.csv
+uv run uvicorn app.main:app --reload
 ```
+
+## Environment Variables
+
+Untuk fitur saat ini, API key belum dipakai karena aplikasi masih read-only dari artifacts. Untuk upgrade input/regenerate XAI nanti, copy `.env.example` menjadi `.env` lalu isi key provider yang memang dipakai pipeline:
+
+```text
+OPENROUTER_API_KEY=
+GROQ_API_KEY=
+```
+
+Model seperti Llama, Qwen, Gemma, atau Gemini dipilih dari provider tersebut lewat konfigurasi backend. Key tetap level provider, bukan per model.
+
+Key hanya boleh dibaca backend. Jangan expose key ke frontend.
 
 ## Endpoint
 
 - `GET /` - dashboard.
 - `GET /health` - status data source.
 - `GET /api/summary` - ringkasan metrik.
-- `GET /api/topics` - daftar topik, mendukung query `q`, `min_cohesion`, dan `model`.
+- `GET /api/topics` - daftar topik, mendukung query `q`, `min_score`, dan `model`.
 - `GET /api/topics/{topic_id}` - detail satu topik.
 
 ## Catatan
