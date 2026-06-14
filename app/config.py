@@ -11,6 +11,7 @@ class Settings(BaseModel):
     project_root: Path = Path(__file__).resolve().parents[2]
     detailed_csv_path: Path
     judged_csv_path: Path
+    scenario2_winner_csv_path: Path
 
 
 @lru_cache
@@ -19,12 +20,19 @@ def get_settings() -> Settings:
     project_root = Path(__file__).resolve().parents[2]
     default_detailed_csv = app_root / "artifacts" / "s3_xai_detailed_comparison_hdbscan_25_llm_as_judge.csv"
     default_judged_csv = app_root / "artifacts" / "s3_xai_judged_results_hdbscan_25.csv"
+    default_scenario2_winner_csv = app_root / "artifacts" / "scenario2_winner_for_scenario3.csv"
     configured_detailed_csv = os.getenv("XAI_DETAILED_CSV_PATH") or os.getenv("XAI_CSV_PATH")
     configured_judged_csv = os.getenv("XAI_JUDGED_CSV_PATH")
+    configured_scenario2_winner_csv = os.getenv("SCENARIO2_WINNER_CSV_PATH")
 
     return Settings(
         app_root=app_root,
         project_root=project_root,
         detailed_csv_path=Path(configured_detailed_csv) if configured_detailed_csv else default_detailed_csv,
         judged_csv_path=Path(configured_judged_csv) if configured_judged_csv else default_judged_csv,
+        scenario2_winner_csv_path=(
+            Path(configured_scenario2_winner_csv)
+            if configured_scenario2_winner_csv
+            else default_scenario2_winner_csv
+        ),
     )

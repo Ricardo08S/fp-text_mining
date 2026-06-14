@@ -124,11 +124,18 @@ class Topic:
 
 
 class TopicRepository:
-    def __init__(self, detailed_csv_path: Path, judged_csv_path: Path):
+    def __init__(
+        self,
+        detailed_csv_path: Path,
+        judged_csv_path: Path,
+        scenario2_winner_csv_path: Path | None = None,
+    ):
         self.detailed_csv_path = detailed_csv_path
         self.judged_csv_path = judged_csv_path
+        self.scenario2_winner_csv_path = scenario2_winner_csv_path
         self._topics: list[Topic] | None = None
         self._model_names: list[str] | None = None
+        self._scenario2_winner: dict | None = None
 
     def all(self) -> list[Topic]:
         if self._topics is None:
@@ -197,9 +204,48 @@ class TopicRepository:
             "model_names": self.model_names(),
             "winner_distribution": winner_distribution,
             "model_stats": model_stats,
+            "scenario2_winner": self.scenario2_winner(),
             "detailed_source_file": str(self.detailed_csv_path),
             "judged_source_file": str(self.judged_csv_path),
+            "scenario2_winner_source_file": (
+                str(self.scenario2_winner_csv_path)
+                if self.scenario2_winner_csv_path
+                else None
+            ),
         }
+
+    def scenario2_winner(self) -> dict | None:
+        if self._scenario2_winner is not None:
+            return self._scenario2_winner
+
+        if not self.scenario2_winner_csv_path or not self.scenario2_winner_csv_path.exists():
+            self._scenario2_winner = None
+            return None
+
+        try:
+            rows = _read_csv(self.scenario2_winner_csv_path)
+        except OSError:
+            self._scenario2_winner = None
+            return None
+
+        if not rows:
+            self._scenario2_winner = None
+            return None
+
+        row = rows[0]
+        self._scenario2_winner = {
+            "arm": row.get("arm", ""),
+            "n_topics": _to_int(row.get("n_topics")),
+            "outlier_rate": _to_float(row.get("outlier_rate")),
+            "cv": _to_float(row.get("cv")),
+            "topic_uniqueness": _to_float(row.get("topic_uniqueness")),
+            "hungarian_f1": _to_float(row.get("hungarian_f1")),
+            "harmonic_mean": _to_float(row.get("harmonic_mean")),
+            "silhouette": _to_float(row.get("silhouette")),
+            "dbcv": _to_float(row.get("dbcv")),
+            "fit_seconds": _to_float(row.get("fit_seconds")),
+        }
+        return self._scenario2_winner
 
     def _load_topics(self) -> list[Topic]:
         if not self.detailed_csv_path.exists():

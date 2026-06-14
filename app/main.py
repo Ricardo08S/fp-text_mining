@@ -21,7 +21,11 @@ app.mount("/static", StaticFiles(directory=settings.app_root / "app" / "static")
 @lru_cache
 def get_repository() -> TopicRepository:
     settings = get_settings()
-    return TopicRepository(settings.detailed_csv_path, settings.judged_csv_path)
+    return TopicRepository(
+        settings.detailed_csv_path,
+        settings.judged_csv_path,
+        settings.scenario2_winner_csv_path,
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -62,6 +66,14 @@ def index() -> str:
           <span class="metric-label">Best Avg Judge</span>
           <strong id="bestJudgeAvg">-</strong>
         </div>
+      </section>
+
+      <section class="model-info-band" id="modelInfoBand" aria-label="Scenario 2 winner">
+        <div class="section-header">
+          <h2>Scenario 2 Winner</h2>
+          <span id="modelInfoStatus">Optional metadata</span>
+        </div>
+        <div class="model-info-grid" id="modelInfoGrid"></div>
       </section>
 
       <section class="workspace">
@@ -128,6 +140,7 @@ def health(settings: Settings = Depends(get_settings)) -> dict:
         "ok": settings.detailed_csv_path.exists() and settings.judged_csv_path.exists(),
         "detailed_source_file": str(settings.detailed_csv_path),
         "judged_source_file": str(settings.judged_csv_path),
+        "scenario2_winner_source_file": str(settings.scenario2_winner_csv_path),
     }
 
 

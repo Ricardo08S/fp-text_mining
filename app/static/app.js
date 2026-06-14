@@ -9,6 +9,8 @@ const els = {
   docCount: document.getElementById("docCount"),
   topWinner: document.getElementById("topWinner"),
   bestJudgeAvg: document.getElementById("bestJudgeAvg"),
+  modelInfoStatus: document.getElementById("modelInfoStatus"),
+  modelInfoGrid: document.getElementById("modelInfoGrid"),
   searchInput: document.getElementById("searchInput"),
   scoreInput: document.getElementById("scoreInput"),
   modelSelect: document.getElementById("modelSelect"),
@@ -74,6 +76,37 @@ async function loadSummary() {
   els.bestJudgeAvg.textContent = bestModel
     ? `${formatCompactModel(bestModel[0])} ${formatScore(bestModel[1].avg_judge_total)}`
     : "-";
+
+  renderScenario2Winner(summary.scenario2_winner);
+}
+
+function renderScenario2Winner(winner) {
+  if (!winner) {
+    els.modelInfoStatus.textContent = "Not provided";
+    els.modelInfoGrid.innerHTML = `
+      <div class="model-info-empty">Place scenario2_winner_for_scenario3.csv in artifacts/ to show experiment metadata.</div>
+    `;
+    return;
+  }
+
+  els.modelInfoStatus.textContent = winner.arm || "Loaded";
+  const items = [
+    ["Arm", winner.arm],
+    ["Topics", winner.n_topics],
+    ["Outlier", formatScore(winner.outlier_rate)],
+    ["c_v", formatScore(winner.cv)],
+    ["Uniqueness", formatScore(winner.topic_uniqueness)],
+    ["Hungarian F1", formatScore(winner.hungarian_f1)],
+    ["Harmonic", formatScore(winner.harmonic_mean)],
+    ["Silhouette", formatScore(winner.silhouette)],
+  ];
+
+  els.modelInfoGrid.innerHTML = items.map(([label, value]) => `
+    <div class="model-info-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value ?? "-")}</strong>
+    </div>
+  `).join("");
 }
 
 function currentQueryUrl() {

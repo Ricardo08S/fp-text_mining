@@ -61,19 +61,30 @@ artifacts/s3_xai_judged_results_hdbscan_25.csv
 
 File tersebut adalah hasil akhir skenario 3 terbaru: detailed output dari tiga model kandidat dan hasil LLM-as-judge.
 
+Tambahan opsional untuk menampilkan ringkasan eksperimen pemenang skenario 2:
+
+```text
+artifacts/scenario2_winner_for_scenario3.csv
+```
+
+Jika file opsional ini tidak ada, aplikasi tetap jalan. Dashboard hanya tidak menampilkan metadata seperti arm pemenang, jumlah topik, outlier rate, `c_v`, Hungarian F1, dan harmonic mean.
+
 Untuk tahap berikutnya, folder ini bisa berisi:
 
 - `s3_xai_detailed_comparison_hdbscan_25_llm_as_judge.csv` - wajib untuk dashboard Opsi A terbaru.
 - `s3_xai_judged_results_hdbscan_25.csv` - wajib untuk winner model dan skor LLM-as-judge.
-- `scenario2_winner_for_scenario3.csv` - metadata winner skenario 2, opsional untuk ditampilkan.
-- `scenario2_best_model.pkl` - model BERTopic final, nanti dibutuhkan jika aplikasi mulai menerima input teks baru.
+- `scenario2_winner_for_scenario3.csv` - metadata winner skenario 2, opsional untuk ditampilkan di dashboard.
+- `scenario2_best_model.pkl` - belum dipakai pada versi static; nanti dibutuhkan jika aplikasi mulai menerima input abstract baru.
 - `cache/` - cache hasil parsing, API, atau regenerate XAI jika fitur LLM ditambahkan.
+
+Catatan penting: versi saat ini sengaja tidak memakai `.pkl`, tidak load BERTopic, dan tidak menjalankan runtime ML. Input abstract/PDF akan dibuat pada iterasi berikutnya agar aplikasi static ini tetap ringan dan mudah deploy.
 
 Jika ingin memakai CSV dari lokasi lain tanpa menyalin ke `artifacts/`, gunakan:
 
 ```bash
 set XAI_DETAILED_CSV_PATH=D:\path\to\s3_xai_detailed_comparison_hdbscan_25_llm_as_judge.csv
 set XAI_JUDGED_CSV_PATH=D:\path\to\s3_xai_judged_results_hdbscan_25.csv
+set SCENARIO2_WINNER_CSV_PATH=D:\path\to\scenario2_winner_for_scenario3.csv
 uv run uvicorn app.main:app --reload
 ```
 
