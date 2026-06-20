@@ -37,7 +37,7 @@ def index() -> str:
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PubMed Topic XAI</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260614-2336" />
   </head>
   <body>
     <header class="topbar">
@@ -128,7 +128,7 @@ def index() -> str:
       </section>
     </main>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=20260614-2336"></script>
   </body>
 </html>
 """
